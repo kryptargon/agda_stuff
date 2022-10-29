@@ -126,7 +126,7 @@ binom {a} {b} =                 begin   (a + b) ²
     ≡⟨ cong (a ² +_)
       (cong (_+ b ²) refl) ⟩            a ² + (2× (a * b) + b ²)    ∎-qed
 
-------------------------------NECESSARY RULES---------------------------------------
+------------------------------NECESSARY RULES (2) ----------------------------------
 
 postulate
     2×a     : ∀ {a : Term} → (a + a) ≡ a * ` two            -- need these 3 postulates because the
@@ -138,6 +138,8 @@ postulate
     inv*    : ∀ {a : Term} → a * (a ⁻¹) ≡ ` one
     neutr*  : ∀ {a : Term} → a * ` one  ≡ a
 
+
+---------------PROOF THAT (x + p /2)² - (p ² /4) + q ≡ x ² + p * x + q -------------
 
 2*a/2 : {a : Term} → 2× (a /2) ≡ a
 2*a/2 {a} =         begin   2× (a /2) 
