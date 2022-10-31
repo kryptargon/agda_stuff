@@ -129,9 +129,10 @@ binom {a} {b} =                 begin   (a + b) ²
 ------------------------------NECESSARY RULES (2) ----------------------------------
 
 postulate
-    2×a     : ∀ {a : Term} → (a + a) ≡ a * ` two            -- need these 3 postulates because the
-    [a/2]²  : ∀ {a : Term} → (a /2) ² ≡ (a ² /4)            -- operators (+,*,/,-) aren't
-    assoc-  : ∀ {a b c : Term} → (a + b) - c ≡ a + (b - c)  -- defined properly
+    2×a     : ∀ {a : Term} → (a + a) ≡ a * ` two            -- need these postulates
+    assoc-  : ∀ {a b c : Term} → (a + b) - c ≡ a + (b - c)  -- because the operators 
+    a/b     : ∀ {a b : Term} → a / b ≡ a * (b ⁻¹)           -- (+,*,/,-) aren't
+    2^2=4   : ` two ² ≡ ` four                              -- defined properly
 
     inv+    : ∀ {a : Term} → a - a ≡ ` zero
     neutr+  : ∀ {a : Term} → a + ` zero ≡ a
@@ -140,6 +141,58 @@ postulate
 
 
 ---------------PROOF THAT (x + p /2)² - (p ² /4) + q ≡ x ² + p * x + q -------------
+
+
+distr^2* : ∀ {a b : Term} → (a * b) ² ≡ (a ² * b ²)
+distr^2* {a} {b} = begin    (a * b) ² 
+    ≡⟨ refl ⟩               (a * b) * (a * b)
+    ≡⟨ assoc* ⟩             a * (b * (a * b))
+    ≡⟨ cong (a *_) 
+      (sym assoc*) ⟩        a * ((b * a) * b)
+    ≡⟨ cong (a *_) 
+      (cong (_* b) 
+      comm*) ⟩              a * ((a * b) * b)
+    ≡⟨ cong (a *_) assoc* ⟩ a * (a * (b * b))
+    ≡⟨ sym assoc* ⟩         a * a * (b * b)
+    ≡⟨ refl ⟩               a ² * b ²     ∎-qed
+
+inv^2 : ∀ {a : Term} → (a ⁻¹)² ≡ (a ²)⁻¹
+inv^2 {a} =     begin               (a ⁻¹)²
+    ≡⟨ sym neutr* ⟩                 (a ⁻¹)² * ` one
+    ≡⟨ cong ((a ⁻¹)² *_) 
+      (sym (inv* {a = (a ²)})) ⟩    (a ⁻¹)² * (a ² * (a ²)⁻¹)
+    ≡⟨ sym assoc* ⟩                 ((a ⁻¹)² * a ²) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+       refl ⟩                       ((a ⁻¹ * a ⁻¹) * (a * a)) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+       assoc* ⟩                     (a ⁻¹ * (a ⁻¹ * (a * a))) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+      (cong (a ⁻¹ *_)
+      (sym assoc*)) ⟩               (a ⁻¹ * ((a ⁻¹ * a) * a)) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+      (cong (a ⁻¹ *_) 
+      (cong (_* a) 
+      comm*)) ⟩                     (a ⁻¹ * ((a * a ⁻¹) * a)) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+      (cong (a ⁻¹ *_) 
+      (cong (_* a) inv*)) ⟩         (a ⁻¹ * (` one * a)) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+      (cong (a ⁻¹ *_) 
+      comm*) ⟩                      (a ⁻¹ * (a * ` one)) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) 
+      (cong (a ⁻¹ *_) 
+      neutr*) ⟩                     (a ⁻¹ * a) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) comm* ⟩    (a * a ⁻¹) * (a ²)⁻¹
+    ≡⟨ cong (_* (a ²)⁻¹) inv* ⟩     ` one * (a ²)⁻¹
+    ≡⟨ comm* ⟩                      (a ²)⁻¹ * ` one
+    ≡⟨ neutr* ⟩                     (a ²)⁻¹ ∎-qed
+
+distr^2/ : ∀ {a b : Term} → (a / b) ² ≡ (a ² / b ²)
+distr^2/ {a} {b} = begin            (a / b) ² 
+    ≡⟨ cong _² a/b ⟩                (a * (b ⁻¹))²
+    ≡⟨ distr^2* ⟩                   a ² * (b ⁻¹)²
+    ≡⟨ cong (a ² *_) inv^2 ⟩        a ² * (b ²)⁻¹
+    ≡⟨ sym a/b ⟩                    (a ² / b ²) ∎-qed
 
 2*a/2 : {a : Term} → 2× (a /2) ≡ a
 2*a/2 {a} =         begin   2× (a /2) 
@@ -160,6 +213,14 @@ postulate
       (sym assoc*) ⟩               2× ((a * b) * 1/2) 
     ≡⟨ 2*a/2 ⟩                     (a * b)  ∎-qed
 
+[p/2]² : ∀ {p : Term} → (p /2) ² ≡ (p ² /4)
+[p/2]² {p} =    begin           (p /2) ²
+    ≡⟨ refl ⟩                   (p * (` two ⁻¹))²
+    ≡⟨ distr^2* ⟩               (p ² * (` two ⁻¹)²)
+    ≡⟨ cong (p ² *_) inv^2 ⟩    (p ² * (` two ²) ⁻¹)
+    ≡⟨ cong (p ² *_) 
+      (cong _⁻¹ 2^2=4) ⟩        (p ² * (` four) ⁻¹)
+    ≡⟨ refl ⟩                   (p ² /4) ∎-qed
 
 pq : ∀ {x p q : Term} → ((x + p /2)² - (p ² /4))  + q ≡ (x ² + p * x) + q
 pq {x} {p} {q} =                begin   ((x + p /2)² - (p ² /4))  + q 
@@ -176,7 +237,7 @@ pq {x} {p} {q} =                begin   ((x + p /2)² - (p ² /4))  + q
       (cong (x ² +_) 
       (cong (2× (x * (p /2)) +_) 
       (cong (_- (p ² /4)) 
-      [a/2]²))) ⟩                       (x ² + (2× (x * (p /2)) + ((p ² /4) - (p ² /4))))  + q
+      [p/2]²))) ⟩                       (x ² + (2× (x * (p /2)) + ((p ² /4) - (p ² /4))))  + q
     ≡⟨ cong (_+ q) 
       (cong (x ² +_) 
       (cong (2× (x * (p /2)) +_) 
