@@ -2,76 +2,56 @@ module Propositions where
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl)
-open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _>_)
-open import Relation.Nullary using (¬_)
-open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to ⟨_,_⟩)
-open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality
+open ≡-Reasoning
 open import Data.String
 
-data Dec (A : Set) : Set where
-  yes :   A → Dec A
-  no  : ¬ A → Dec A
+data SForm : Set where
+  atom : String → SForm
 
-data Formula : Set where
-  atom : String → Formula
+  ⟨_∧_⟩ : SForm → SForm → SForm
+  ⟨_∨_⟩ : SForm → SForm → SForm
 
-  ⟨_∧_⟩ : Formula → Formula → Formula
-  ⟨_∨_⟩ : Formula → Formula → Formula
-  ⟨_⇒_⟩ : Formula → Formula → Formula
-  ⟨_⇔_⟩ : Formula → Formula → Formula
+  ¬-_ : SForm → SForm
 
-  ¬-_ : Formula → Formula
+infixl 6 ¬-_
+infix 5 ⟨_∧_⟩ ⟨_∨_⟩
 
-litcount : Formula → ℕ
-litcount (atom x) = 1
-litcount ⟨ a₁ ∧ a₂ ⟩ = litcount a₁ + litcount a₂
-litcount ⟨ a₁ ∨ a₂ ⟩ = litcount a₁ + litcount a₂
-litcount ⟨ a₁ ⇒ a₂ ⟩ = litcount a₁ + litcount a₂
-litcount ⟨ a₁ ⇔ a₂ ⟩ = litcount a₁ + litcount a₂
-litcount (¬- a) = litcount a
+postulate
+    DM-∨ : ∀ {f₁ f₂ : SForm} → ¬- ⟨ f₁ ∨ f₂ ⟩ ≡ ⟨ ¬- f₁ ∧ ¬- f₂ ⟩
+    DM-∧ : ∀ {f₁ f₂ : SForm} → ¬- ⟨ f₁ ∧ f₂ ⟩ ≡ ⟨ ¬- f₁ ∨ ¬- f₂ ⟩
+    DM-¬¬ : ∀ {f₁ : SForm} → ¬- ¬- f₁ ≡ f₁
 
-a+b→0 : ∀ {a b : ℕ}
-    → a + b ≡ 0
-    → b ≡ 0
-a+b→0 {zero} {zero} a+b=0 = refl
+replace : SForm → SForm
+replace (atom A)    = ¬- atom A
+replace ⟨ f₁ ∧ f₂ ⟩ = ⟨ replace f₁ ∨ replace f₂ ⟩
+replace ⟨ f₁ ∨ f₂ ⟩ = ⟨ replace f₁ ∧ replace f₂ ⟩
+replace (¬- f)      = ¬- replace f
 
-litcount>0 : ∀ {f : Formula}
-    → (litcount f) ≢ 0
-litcount>0 {⟨ f₁ ∧ f₂ ⟩} lf≡0 = litcount>0 {f₂} (a+b→0 lf≡0)
-litcount>0 {⟨ f₁ ∨ f₂ ⟩} lf≡0 = litcount>0 {f₂} (a+b→0 lf≡0)
-litcount>0 {⟨ f₁ ⇒ f₂ ⟩} lf≡0 = litcount>0 {f₂} (a+b→0 lf≡0)
-litcount>0 {⟨ f₁ ⇔ f₂ ⟩} lf≡0 = litcount>0 {f₂} (a+b→0 lf≡0)
-litcount>0 {¬- f} lf≡0 = litcount>0 {f} lf≡0
+--------------------------PROOF THAT f* ≡ ¬ f-----------------------
 
-junccount : Formula → ℕ
-junccount (atom x) = 0
-junccount ⟨ a₁ ∧ a₂ ⟩ = junccount a₁ + junccount a₂ + 1
-junccount ⟨ a₁ ∨ a₂ ⟩ = junccount a₁ + junccount a₂ + 1
-junccount ⟨ a₁ ⇒ a₂ ⟩ = junccount a₁ + junccount a₂ + 1
-junccount ⟨ a₁ ⇔ a₂ ⟩ = junccount a₁ + junccount a₂ + 1
-junccount (¬- a) = junccount a
+replace≅¬ : ∀ (f : SForm) → replace f ≡ ¬- f
 
-symcount : Formula → ℕ
-symcount (atom x) = 1
-symcount ⟨ f₁ ∧ f₂ ⟩ = symcount f₁ + symcount f₂ + 3
-symcount ⟨ f₁ ∨ f₂ ⟩ = symcount f₁ + symcount f₂ + 3
-symcount ⟨ f₁ ⇒ f₂ ⟩ = symcount f₁ + symcount f₂ + 3
-symcount ⟨ f₁ ⇔ f₂ ⟩ = symcount f₁ + symcount f₂ + 3
-symcount (¬- f) = symcount f + 1
+replace≅¬ (atom A) = refl
 
-lit→junc : ∀ {f : Formula} {n : ℕ}
-  → litcount f ≡ suc n
-  → junccount f ≡ n
-lit→junc {atom x} refl = refl
-lit→junc {⟨ f₁ ∧ f₂ ⟩} lit = {!   !}
-lit→junc {⟨ f₁ ∨ f₂ ⟩} lit = {!!}
-lit→junc {⟨ f₁ ⇒ f₂ ⟩} lit = {!!}
-lit→junc {⟨ f₁ ⇔ f₂ ⟩} lit with litcount f₁ | litcount f₂
-lit→junc {⟨ f₁ ⇔ f₂ ⟩} refl | zero | suc l2 with litcount>0 {f₁} {!   !}
-... | ()
-lit→junc {⟨ f₁ ⇔ f₂ ⟩} refl | suc l1 | zero with litcount>0 {f₂} {!   !}
-... | ()
-lit→junc {⟨ f₁ ⇔ f₂ ⟩} refl | suc l1 | suc l2 = {!   !}
-lit→junc {¬- f} lit = lit→junc {f} lit
+replace≅¬ ⟨ f₁ ∧ f₂ ⟩ with replace≅¬ f₁ | replace≅¬ f₂
+... | f₁*≡¬f₁ | f₂*≡¬f₂ =       
+        begin                           ⟨ replace f₁ ∨ replace f₂ ⟩ 
+    ≡⟨ cong ⟨_∨ replace f₂ ⟩ f₁*≡¬f₁ ⟩  ⟨ ¬- f₁ ∨ replace f₂ ⟩
+    ≡⟨ cong ⟨ ¬- f₁ ∨_⟩ f₂*≡¬f₂ ⟩       ⟨ ¬- f₁ ∨ ¬- f₂ ⟩
+    ≡⟨ sym DM-∧ ⟩                       ¬- ⟨ f₁ ∧ f₂ ⟩ 
+    ∎
+
+replace≅¬ ⟨ f₁ ∨ f₂ ⟩ with replace≅¬ f₁ | replace≅¬ f₂ 
+... | f₁*≡¬f₁ | f₂*≡¬f₂ = 
+        begin                           ⟨ replace f₁ ∧ replace f₂ ⟩ 
+    ≡⟨ cong ⟨_∧ replace f₂ ⟩ f₁*≡¬f₁ ⟩  ⟨ ¬- f₁ ∧ replace f₂ ⟩ 
+    ≡⟨ cong ⟨ ¬- f₁ ∧_⟩ f₂*≡¬f₂ ⟩       ⟨ ¬- f₁ ∧ ¬- f₂ ⟩
+    ≡⟨ sym DM-∨ ⟩                       ¬- ⟨ f₁ ∨ f₂ ⟩ 
+    ∎
+
+replace≅¬ (¬- f) with replace≅¬ f
+... | f*≡¬f =               
+        begin                       (¬- replace f)
+            ≡⟨ cong ¬-_ f*≡¬f ⟩     ¬- (¬- f) 
+            ∎
