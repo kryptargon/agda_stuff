@@ -2,90 +2,60 @@ module Propositions where
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl)
+open import Data.List using (List; []; _∷_)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Relation.Binary.PropositionalEquality
 open ≡-Reasoning
-open import Relation.Nullary using (¬_)
-open import Data.String using (String) renaming (_≟_ to _≟-String'_)
+open import Data.String
 open import Relation.Nullary using (¬_) renaming (Dec to Dec'; yes to yes'; no to no')
+open import Data.String using (String) renaming (_≟_ to _≟-String'_)
 
-data SForm : Set where
-  atom : String → SForm
+data Form : Set where
+    atom : String → Form
 
-  ⟨_∧_⟩ : SForm → SForm → SForm
-  ⟨_∨_⟩ : SForm → SForm → SForm
+    ⟨_∧_⟩ : Form → Form → Form
+    ⟨_∨_⟩ : Form → Form → Form
+    ⟨_⇒_⟩ : Form → Form → Form
+    ⟨_⇔_⟩ : Form → Form → Form
 
-  ¬-_ : SForm → SForm
+    ¬-_ : Form → Form
 
-infixl 6 ¬-_
-infix 5 ⟨_∧_⟩ ⟨_∨_⟩
+data Truth : Set where
+    W : Truth
+    F : Truth
+    undef : Truth
 
-postulate
-    DM-∨ : ∀ {f₁ f₂ : SForm} → ¬- ⟨ f₁ ∨ f₂ ⟩ ≡ ⟨ ¬- f₁ ∧ ¬- f₂ ⟩
-    DM-∧ : ∀ {f₁ f₂ : SForm} → ¬- ⟨ f₁ ∧ f₂ ⟩ ≡ ⟨ ¬- f₁ ∨ ¬- f₂ ⟩
-    DM-¬¬ : ∀ {f₁ : SForm} → ¬- ¬- f₁ ≡ f₁
+infixl 5 _▷_
+data Context (A : Set) : ℕ → Set where
+  ∅   : Context A zero
+  _▷_ : ∀ {n} → Context A n → A → Context A (suc n)
 
-replace : SForm → SForm
-replace (atom A)    = ¬- atom A
-replace ⟨ f₁ ∧ f₂ ⟩ = ⟨ replace f₁ ∨ replace f₂ ⟩
-replace ⟨ f₁ ∨ f₂ ⟩ = ⟨ replace f₁ ∧ replace f₂ ⟩
-replace (¬- f)      = ¬- replace f
+data _∈_ {A : Set} : A → List A → Set where
 
---------------------------PROOF THAT f* ≡ ¬ f-----------------------
+  Z : ∀ {xs x}
+    → x ∈ (x ∷ xs)
 
-replace≅¬ : ∀ (f : SForm) → replace f ≡ ¬- f
-
-replace≅¬ (atom A) = refl
-
-replace≅¬ ⟨ f₁ ∧ f₂ ⟩ with replace≅¬ f₁ | replace≅¬ f₂
-... | f₁*≡¬f₁ | f₂*≡¬f₂ =       
-        begin                           ⟨ replace f₁ ∨ replace f₂ ⟩ 
-    ≡⟨ cong ⟨_∨ replace f₂ ⟩ f₁*≡¬f₁ ⟩  ⟨ ¬- f₁ ∨ replace f₂ ⟩
-    ≡⟨ cong ⟨ ¬- f₁ ∨_⟩ f₂*≡¬f₂ ⟩       ⟨ ¬- f₁ ∨ ¬- f₂ ⟩
-    ≡⟨ sym DM-∧ ⟩                       ¬- ⟨ f₁ ∧ f₂ ⟩ 
-    ∎
-
-replace≅¬ ⟨ f₁ ∨ f₂ ⟩ with replace≅¬ f₁ | replace≅¬ f₂ 
-... | f₁*≡¬f₁ | f₂*≡¬f₂ = 
-        begin                           ⟨ replace f₁ ∧ replace f₂ ⟩ 
-    ≡⟨ cong ⟨_∧ replace f₂ ⟩ f₁*≡¬f₁ ⟩  ⟨ ¬- f₁ ∧ replace f₂ ⟩ 
-    ≡⟨ cong ⟨ ¬- f₁ ∧_⟩ f₂*≡¬f₂ ⟩       ⟨ ¬- f₁ ∧ ¬- f₂ ⟩
-    ≡⟨ sym DM-∨ ⟩                       ¬- ⟨ f₁ ∨ f₂ ⟩ 
-    ∎
-
-replace≅¬ (¬- f) with replace≅¬ f
-... | f*≡¬f =               
-        begin                       (¬- replace f)
-            ≡⟨ cong ¬-_ f*≡¬f ⟩     ¬- (¬- f) 
-            ∎
-
-----------------------------------------------------------------------
+  S_ : ∀ {xs x y}
+    → x ∈ xs
+      ------------
+    → x ∈ (y ∷ xs)
 
 data Dec (A : Set) : Set where
-  yes : A → Dec A
-  no : ¬ A → Dec A
+  yes :   A → Dec A
+  no  : ¬ A → Dec A
 
 _≟-String_ : (x y : String) → Dec (x ≡ y)
 x ≟-String y with x ≟-String' y
 ... | yes' eq = yes eq
-... | no' eq = no eq
+... | no'  eq = no  eq
 
-_≡F?_ : ∀ (f₁ f₂ : SForm) → Dec (f₁ ≡ f₂)
-atom x ≡F? atom y with x ≟-String y
-... | yes x=y = yes (cong atom x=y)
-... | no  x≠y = no λ {x₁ → {!!}}
-atom x ≡F? ⟨ f₂ ∧ f₃ ⟩ = no (λ ())
-atom x ≡F? ⟨ f₂ ∨ f₃ ⟩ = no (λ ())
-atom x ≡F? (¬- f₂) = no (λ ())
-⟨ f₁ ∧ f₂ ⟩ ≡F? atom x = no (λ ())
-⟨ f₁ ∧ f₂ ⟩ ≡F? ⟨ f₃ ∧ f₄ ⟩ = {!!}
-⟨ f₁ ∧ f₂ ⟩ ≡F? ⟨ f₃ ∨ f₄ ⟩ = no (λ ())
-⟨ f₁ ∧ f₂ ⟩ ≡F? (¬- f₃) = no (λ ())
-⟨ f₁ ∨ f₂ ⟩ ≡F? atom x = no (λ ())
-⟨ f₁ ∨ f₂ ⟩ ≡F? ⟨ f₃ ∧ f₄ ⟩ = no (λ ())
-⟨ f₁ ∨ f₂ ⟩ ≡F? ⟨ f₃ ∨ f₄ ⟩ = {!!}
-⟨ f₁ ∨ f₂ ⟩ ≡F? (¬- f₃) = no (λ ())
-(¬- f₁) ≡F? atom x = no (λ ())
-(¬- f₁) ≡F? ⟨ f₂ ∧ f₃ ⟩ = no (λ ())
-(¬- f₁) ≡F? ⟨ f₂ ∨ f₃ ⟩ = no (λ ())
-(¬- f₁) ≡F? (¬- f₂) = {!!}
-
+_eval_ : ∀ {n} → Context String n → Form → Truth
+∅ eval f = undef
+(a ▷ s) eval atom s₁ with s ≟-String s₁
+... | yes s=s₁ = {!   !}
+... | no s≠s₁ = a eval atom s
+(a ▷ x) eval ⟨ f ∧ f₁ ⟩ = {!   !}
+(a ▷ x) eval ⟨ f ∨ f₁ ⟩ = {!   !}
+(a ▷ x) eval ⟨ f ⇒ f₁ ⟩ = {!   !}
+(a ▷ x) eval ⟨ f ⇔ f₁ ⟩ = {!   !}
+(a ▷ x) eval (¬- f) = {!   !}
